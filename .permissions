@@ -1,1 +1,1 @@
---allow-env --allow-net
+--allow-env --allow-net --allow-read
