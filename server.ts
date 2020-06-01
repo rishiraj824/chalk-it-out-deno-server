@@ -1,6 +1,3 @@
-//import { listenAndServe } from "https://deno.land/std/http/server.ts";
-//import { acceptable, acceptWebSocket } from "https://deno.land/std/ws/mod.ts";
-// Importing some console colors
 import { bold, yellow } from "https://deno.land/std@0.54.0/fmt/colors.ts";
 import { config } from "https://deno.land/x/dotenv/mod.ts";
 import {
