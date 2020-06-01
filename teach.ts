@@ -7,43 +7,60 @@ const { MUX_ACCESS_TOKEN_ID, MUX_SECRET_KEY } = config();
 
 const usersMap = new Map();
 
-const groupsMap = new Map();
+const streamsMap = new Map();
 
 const messagesMap = new Map();
 
 // This is called when user is connected
-export default async function teach(key, ws) {
+export default async function teach(ws, key, id) {
   // Generate unique userId
   const userId = v4.generate();
 
   const rtmpUrl = `rtmp://global-live.mux.com:5222/app/${key}`;
 
   const ffmpeg = Deno.run({
-    cmd: ['/usr/local/bin/ffmpeg', '-i', '-',
+    cmd: [
+      "/usr/local/bin/ffmpeg",
+      "-i",
+      "-",
 
       // video codec config: low latency, adaptive bitrate
-      '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-tune",
+      "zerolatency",
 
       // audio codec config: sampling frequency (11025, 22050, 44100), bitrate 64 kbits
-      '-c:a', 'aac', '-ar', '44100', '-b:a', '64k',
+      "-c:a",
+      "aac",
+      "-ar",
+      "44100",
+      "-b:a",
+      "64k",
 
       //force to overwrite
-      '-y',
+      "-y",
 
       // used for audio sync
-      '-use_wallclock_as_timestamps', '1',
-      '-async', '1',
+      "-use_wallclock_as_timestamps",
+      "1",
+      "-async",
+      "1",
 
       //'-filter_complex', 'aresample=44100', // resample audio to 44100Hz, needed if input is not 44100
       //'-strict', 'experimental',
-      '-bufsize', '1000',
-      '-f', 'flv',
+      "-bufsize",
+      "1000",
+      "-f",
+      "flv",
       // allow run flag
-      rtmpUrl
+      rtmpUrl,
     ],
     stdin: "piped",
     stdout: "piped",
-    stderr: "piped"
+    stderr: "piped",
   });
 
   console.log(rtmpUrl);
@@ -73,14 +90,14 @@ export default async function teach(key, ws) {
           ws,
         };
         console.log(userObj);
-        console.log(event)
+        console.log(event);
         // Put userObj inside usersMap
         usersMap.set(userId, userObj);
 
-        // Take out users from groupsMap
-        const users = groupsMap.get(event.groupName) || [];
+        // Take out users from streamsMap
+        const users = streamsMap.get(event.groupName) || [];
         users.push(userObj);
-        groupsMap.set(event.groupName, users);
+        streamsMap.set(event.groupName, users);
 
         // Emit to all users in this group that new user joined.
         // emitUserList(event.groupName);
@@ -94,30 +111,27 @@ export default async function teach(key, ws) {
           name: userObj.name,
           message: event.data,
         };
-        console.log(event)
-        console.log('message received')
-        console.log(event.data)
+        console.log(event);
+        console.log("message received");
+        console.log(event.data);
         const messages = messagesMap.get(userObj.groupName) || [];
         ///messages.push(message);
-        console.log('this is some video data');
+        console.log("this is some video data");
         ffmpeg.stdin.write(event.data);
 
         messagesMap.set(userObj.groupName, messages);
         //emitMessage(userObj.groupName, message, userId);
         break;
       default:
-
         console.log(event);
         ffmpeg.stdin.write(event);
-
-
     }
   }
 }
 
 function emitUserList(groupName) {
-  // Get users from groupsMap
-  const users = groupsMap.get(groupName) || [];
+  // Get users from streamsMap
+  const users = streamsMap.get(groupName) || [];
   // Iterate over users and send list of users to every user in the group
   for (const user of users) {
     const event = {
@@ -129,11 +143,11 @@ function emitUserList(groupName) {
 }
 
 function getDisplayUsers(groupName) {
-  const users = groupsMap.get(groupName) || [];
+  const users = streamsMap.get(groupName) || [];
   return users.map((u) => {
     return {
       userId: u.userId,
-      name: u.name
+      name: u.name,
     };
   });
 }
