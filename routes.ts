@@ -1,10 +1,15 @@
 import { Router } from "https://deno.land/x/oak/mod.ts";
 import muxAuthController from "./auth.ts";
-import createLiveStream from "./mux.ts";
+import mux from "./mux.ts";
+import sock from "./sock.ts";
 
 const router = new Router();
 
 router.use(muxAuthController);
-router.post("/live-stream", createLiveStream);
+
+// socket route
+router.use(sock);
+
+router.post("/live-stream", mux);
 
 export default router;

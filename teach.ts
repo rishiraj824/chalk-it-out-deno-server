@@ -1,9 +1,6 @@
 // @ts-nocheck
 import { v4 } from "https://deno.land/std/uuid/mod.ts";
 import { isWebSocketCloseEvent } from "https://deno.land/std/ws/mod.ts";
-import { config } from "https://deno.land/x/dotenv/mod.ts";
-
-const { MUX_ACCESS_TOKEN_ID, MUX_SECRET_KEY } = config();
 
 const usersMap = new Map();
 
@@ -50,30 +47,26 @@ export default async function teach(ws, key, id) {
       "1",
 
       //'-filter_complex', 'aresample=44100', // resample audio to 44100Hz, needed if input is not 44100
-      //'-strict', 'experimental',
+      "-strict",
+      "experimental",
       "-bufsize",
       "1000",
       "-f",
       "flv",
-      // allow run flag
       rtmpUrl,
     ],
     stdin: "piped",
     stdout: "piped",
     stderr: "piped",
   });
-
-  console.log(rtmpUrl);
-  console.log(ffmpeg);
-
+  
   // Listening of WebSocket events
   for await (let data of ws) {
     const event = typeof data === "string" ? JSON.parse(data) : data;
-
+    
     // If event is close,
     if (isWebSocketCloseEvent(data)) {
       // Take out user from usersMap
-      leaveGroup(userId);
       break;
     }
 
@@ -87,67 +80,29 @@ export default async function teach(ws, key, id) {
           userId,
           name: event.name,
           groupName: event.groupName,
-          ws,
         };
-        console.log(userObj);
-        console.log(event);
-        // Put userObj inside usersMap
         usersMap.set(userId, userObj);
 
-        // Take out users from streamsMap
         const users = streamsMap.get(event.groupName) || [];
         users.push(userObj);
         streamsMap.set(event.groupName, users);
-
-        // Emit to all users in this group that new user joined.
-        // emitUserList(event.groupName);
-        // Emit all previous messages sent in this group to newly joined user
+        console.log('connection established')
         break;
-        // If it is message receive
-      case "message":
+      default:
         userObj = usersMap.get(userId);
         const message = {
           userId,
           name: userObj.name,
           message: event.data,
         };
-        console.log(event);
-        console.log("message received");
-        console.log(event.data);
         const messages = messagesMap.get(userObj.groupName) || [];
-        ///messages.push(message);
-        console.log("this is some video data");
-        ffmpeg.stdin.write(event.data);
-
+        messages.push(message);
+        //console.log(event.data);
+        if(event instanceof Uint8Array) {
+          ffmpeg.stdin.write(event);
+        }
         messagesMap.set(userObj.groupName, messages);
-        //emitMessage(userObj.groupName, message, userId);
         break;
-      default:
-        console.log(event);
-        ffmpeg.stdin.write(event);
     }
   }
-}
-
-function emitUserList(groupName) {
-  // Get users from streamsMap
-  const users = streamsMap.get(groupName) || [];
-  // Iterate over users and send list of users to every user in the group
-  for (const user of users) {
-    const event = {
-      event: "users",
-      data: getDisplayUsers(groupName),
-    };
-    user.ws.send(JSON.stringify(event));
-  }
-}
-
-function getDisplayUsers(groupName) {
-  const users = streamsMap.get(groupName) || [];
-  return users.map((u) => {
-    return {
-      userId: u.userId,
-      name: u.name,
-    };
-  });
 }
