@@ -3,7 +3,14 @@ import { Context } from "https://deno.land/x/oak/mod.ts";
 
 const { MUX_API_ACCESS_ID, MUX_API_SECRET_KEY, MUX_API_URL } = config();
 
-export default async (ctx: Context) => {
+
+const muxResponse = async ({ requestOptions }: { requestOptions: any }): Promise<any> => {
+  let data = await (await fetch(MUX_API_URL, requestOptions)).text();
+  return data
+};
+
+
+export default async (ctx: Context, next: Function) => {
   if (!ctx.request.hasBody) {
     ctx.response.status = 400;
     ctx.response.body = { msg: "Invalid data" };
@@ -11,10 +18,12 @@ export default async (ctx: Context) => {
   }
 
   const requestHeaders = new Headers();
+  const token = btoa(`${MUX_API_ACCESS_ID}:${MUX_API_SECRET_KEY}`);
+
   requestHeaders.append("Content-Type", "application/json");
   requestHeaders.append(
-    "Authorization",
-    `Basic ${MUX_API_ACCESS_ID}:${MUX_API_SECRET_KEY}`,
+    `Authorization`,
+    `Basic ${token}`,
   );
 
   const raw = JSON.stringify(
@@ -31,12 +40,10 @@ export default async (ctx: Context) => {
     redirect: "follow",
   };
 
-  const muxResponse = async (MUX_API_URL: string) => {
-    let data = await (await fetch(MUX_API_URL, requestOptions)).text();
-    console.log(data);
-    return data;
-  };
-  muxResponse(MUX_API_URL);
+  const data = await muxResponse({ requestOptions });
 
-  ctx.response.body = muxResponse(MUX_API_URL);
+  next();
+
+  ctx.response.body = data;
+  ctx.response.status= 200;
 };
