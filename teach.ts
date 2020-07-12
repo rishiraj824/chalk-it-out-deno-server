@@ -14,10 +14,10 @@ export default async function teach(ws, key, id) {
   const userId = v4.generate();
 
   const rtmpUrl = `rtmp://global-live.mux.com:5222/app/${key}`;
-
+  //ffmpeg -re -i ../sample-mp4-file.mp4 -acodec copy -vcodec copy -b:v 2000k -r 30 -f flv rtmp://global-live.mux.com:5222/app/31f8248e-b1d1-6b0c-10d8-c071c13e5e3c
   const ffmpeg = Deno.run({
     cmd: [
-      "/usr/local/bin/ffmpeg",
+      "ffmpeg",
       "-i",
       "-",
 
@@ -89,19 +89,20 @@ export default async function teach(ws, key, id) {
         console.log('connection established')
         break;
       default:
-        userObj = usersMap.get(userId);
-        const message = {
+        //userObj = usersMap.get(userId);
+        /* const message = {
           userId,
           name: userObj.name,
-          message: event.data,
-        };
-        const messages = messagesMap.get(userObj.groupName) || [];
-        messages.push(message);
-        //console.log(event.data);
+          message: event,
+        }; */
+        //const messages = messagesMap.get(userObj.groupName) || [];
+        //messages.push(message);
         if(event instanceof Uint8Array) {
+          console.log(event);
+
           ffmpeg.stdin.write(event);
         }
-        messagesMap.set(userObj.groupName, messages);
+        //messagesMap.set(userObj.groupName, messages);
         break;
     }
   }
