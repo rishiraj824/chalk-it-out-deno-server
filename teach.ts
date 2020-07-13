@@ -13,7 +13,8 @@ export default async function teach(ws, key, id) {
   // Generate unique userId
   const userId = v4.generate();
 
-  const rtmpUrl = `rtmp://global-live.mux.com:5222/app/${key}`;
+  //createProcess(key);
+  const rtmpUrl = `rtmps://global-live.mux.com/app/${key}`;
   //ffmpeg -re -i ../sample-mp4-file.mp4 -acodec copy -vcodec copy -b:v 2000k -r 30 -f flv rtmp://global-live.mux.com:5222/app/31f8248e-b1d1-6b0c-10d8-c071c13e5e3c
   const ffmpeg = Deno.run({
     cmd: [
@@ -59,7 +60,7 @@ export default async function teach(ws, key, id) {
     stdout: "piped",
     stderr: "piped",
   });
-  
+
   // Listening of WebSocket events
   for await (let data of ws) {
     const event = typeof data === "string" ? JSON.parse(data) : data;
@@ -86,8 +87,21 @@ export default async function teach(ws, key, id) {
         const users = streamsMap.get(event.groupName) || [];
         users.push(userObj);
         streamsMap.set(event.groupName, users);
-        console.log('connection established')
+        console.log("connection established");
         break;
+      case "close":
+        ffmpeg.stdin.close();
+        const { code } = await ffmpeg.status();
+        console.log(`\n${code}\n`);
+
+        if (code === 0) {
+          const rawOutput = await ffmpeg.output();
+          await Deno.stdout.write(rawOutput);
+        } else {
+          const rawError = await ffmpeg.stderrOutput();
+          const errorString = new TextDecoder().decode(rawError);
+          console.log(errorString);
+        }
       default:
         //userObj = usersMap.get(userId);
         /* const message = {
@@ -97,10 +111,15 @@ export default async function teach(ws, key, id) {
         }; */
         //const messages = messagesMap.get(userObj.groupName) || [];
         //messages.push(message);
-        if(event instanceof Uint8Array) {
+        /* 
+        console.log(ffmpegProcess);
+        console.log(ffmpegErr); */
+        if (event instanceof Uint8Array) {
           console.log(event);
-
-          ffmpeg.stdin.write(event);
+          console.log(rtmpUrl)
+          await ffmpeg.stdin.write(event);
+          
+          
         }
         //messagesMap.set(userObj.groupName, messages);
         break;
